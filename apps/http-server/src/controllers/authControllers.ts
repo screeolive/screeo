@@ -1,10 +1,12 @@
 import { Request, Response } from "express";
-import { signupValidationSchema } from "../lib/zod_schema";
+import { signinValidationSchema, signupValidationSchema } from "../lib/zod_schema";
 import type { ZodError } from "zod";
 import bcrypt from "bcrypt";
+import jwt from 'jsonwebtoken';
 import prisma from "../db/prisma";
 import { send_otp_test } from "../services/send_otp_for_signup";
 import { MAIL_VERIFICATION } from "../services/verify_mail";
+import { JWT_USER_SECRET } from "../config/config";
 
 export const signup = async (req: Request, res: Response) => {
     try {
@@ -117,3 +119,112 @@ export const verify_mail = async (req: Request, res: Response) => {
         return;
     }
 }
+
+export const signin = async (req: Request, res: Response) => {
+    try {
+        const validationResult = signinValidationSchema.safeParse(req.body);
+
+        // If validation fails, return an error
+        if (!validationResult.success) {
+            const error = validationResult.error as ZodError;
+
+            const formattedErrors = error.issues.map((issue) => ({
+                field: issue.path.join(".") || "form",
+                message: issue.message,
+            }));
+
+            res.status(400).json({
+                message: "Validation failed",
+                errors: formattedErrors,
+            });
+            return;
+        }
+
+        const { email, password } = validationResult.data;
+
+        // Find the user in the database
+        const user = await prisma.user.findUnique({
+            where: {
+                email
+            },
+        });
+
+        if (!user) {
+            res.status(401).json({
+                message: `User with mail ${email} Not Found` 
+            });
+            return;
+        }
+
+        if (!user.isMailVerified) {
+            res.status(403).json({
+                message: "Please verify your email before logging in."
+            })
+            return;
+        }
+
+        // Compare password with hashed password in DB
+        const matchPassword = await bcrypt.compare(password, user.password);
+        if (!matchPassword) {
+            res.status(401).json({
+                message: "Incorrect Password!"
+            });
+            return;
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(
+            {
+                id: user.id,
+                email: user.email
+            },
+            JWT_USER_SECRET,
+            {
+                expiresIn: "4d" // Token expires in 4 day
+            }
+        );
+
+        // Set the JWT token as an HTTP-only cookie
+
+        res.status(200)
+            .cookie("token", token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV !== "development", // Secure in production
+                sameSite: process.env.NODE_ENV === "development" ? "lax" : "none", // Allow cross-site cookies
+                maxAge: 4 * 24 * 60 * 60 * 1000, // 4 days
+                path: "/"
+            })
+            .json({
+                success: true,
+                message: `${user.username} Logged In Successfully!`,
+                user: {
+                    id: user.id,
+                    email: user.email
+                }
+            });
+
+        return;
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: "Something Went Wrong During Signin"
+        });
+        return;
+    }
+}
+
+export const logout = (req: Request, res: Response) => {
+    try {
+        res.clearCookie("token", { httpOnly: true, secure: true, sameSite: "none" });
+        res.status(200).json({
+            message: "User Logged Out Successfully!"
+        });
+        return;
+    } catch (error) {
+        console.error("Logout Error:", error);
+        res.status(500).json({
+            error: "Something went wrong while logging out."
+        });
+        return
+    }
+};
