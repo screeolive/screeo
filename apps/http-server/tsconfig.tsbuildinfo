@@ -1,1 +1,1 @@
-{"root":["./src/index.ts","./src/config/config.ts","./src/controllers/authcontrollers.ts","./src/lib/zod_schema.ts","./src/routes/authroutes.ts"],"version":"5.8.3"}
+{"root":["./src/index.ts","./src/config/config.ts","./src/controllers/authcontrollers.ts","./src/db/prisma.ts","./src/lib/zod_schema.ts","./src/routes/authroutes.ts","./src/services/send_otp_for_signup.ts","./src/services/verify_mail.ts"],"version":"5.8.3"}
