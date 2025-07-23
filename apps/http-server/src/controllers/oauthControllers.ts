@@ -35,8 +35,7 @@ const handleAuthSuccess = (req: Request, res: Response) => {
         path: "/",
     });
 
-    // Redirect to the frontend dashboard
-    const redirectUrl = new URL(`${FRONTEND_URL}/dashboard`);
+    const redirectUrl = new URL(`${FRONTEND_URL}`);
     res.redirect(redirectUrl.toString());
 };
 
