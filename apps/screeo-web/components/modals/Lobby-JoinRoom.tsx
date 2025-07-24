@@ -54,6 +54,9 @@ export const JoinRoomLobbyModal = ({ open, onClose, onSwitchToCreateRoomLobby }:
                                     Join a Meeting
                                 </span>
                             </div>
+                            <span onClick={onSwitchToCreateRoomLobby} className="bg-gradient-to-r text-xl md:text-4xl text-center font-extrabold from-blue-600 to-cyan-600 bg-clip-text text-transparent decoration-cyan-800 cursor-pointer hover:underline">
+                                Switch to Create Room
+                            </span>
 
                             {/* Form */}
                         </div>

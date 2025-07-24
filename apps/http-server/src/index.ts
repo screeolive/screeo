@@ -9,6 +9,7 @@ import {
 } from "./config/config";
 import { AuthRouter } from "./routes/authRoutes";
 import { OauthRouter } from './controllers/oauthControllers';
+import { RoomRouter } from './routes/roomRoutes';
 
 const app = express();
 
@@ -50,6 +51,8 @@ app.use(passport.session());
 
 app.use("/api/v1/auth", AuthRouter);
 app.use("/auth", OauthRouter);
+
+app.use("/api/v1/rooms", RoomRouter);
 
 
 app.get("/", (req, res) => {

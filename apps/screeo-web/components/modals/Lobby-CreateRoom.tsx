@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import axios, { AxiosError } from 'axios'; // Import axios
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 // --- Helper Components & Icons ---
 
@@ -62,7 +63,7 @@ export const CreateRoomLobbyModal = ({ open, onClose, onSwitchToJoinRoomLobby }:
         const checkAuthStatus = async () => {
             try {
                 // Using axios for the API call
-                const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/session` , {withCredentials: true});
+                const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/session`, { withCredentials: true });
 
                 if (response.data?.message?.isAuthenticated) {
                     setUserData(response.data.message.user);
@@ -114,7 +115,7 @@ export const CreateRoomLobbyModal = ({ open, onClose, onSwitchToJoinRoomLobby }:
         try {
             // Using axios to create the room
             const payload = joinAsGuest ? { guestName } : {};
-            const response = await axios.post('/api/v1/rooms', payload);
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/rooms`, payload, { withCredentials: true });
 
             const roomId = response.data?.roomId;
             if (!roomId) {
@@ -124,8 +125,8 @@ export const CreateRoomLobbyModal = ({ open, onClose, onSwitchToJoinRoomLobby }:
             // Redirect to the new meeting room
             router.push(`/room/${roomId}`);
 
-        } catch (err: any) {
-            const axiosError = err as AxiosError<any>;
+        } catch (err) {
+            const axiosError = err as AxiosError<{ message?: string }>;
             const errorMessage = axiosError.response?.data?.message || 'Failed to create room. Please try again.';
             setError(errorMessage);
             setIsCreatingRoom(false);
@@ -163,9 +164,9 @@ export const CreateRoomLobbyModal = ({ open, onClose, onSwitchToJoinRoomLobby }:
             // --- Authenticated User View ---
             return (
                 <div className="text-center">
-                    <img src={`https://api.dicebear.com/8.x/initials/svg?seed=${userData.username}`} alt="avatar" className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-cyan-100" />
+                    <Image src={`https://api.dicebear.com/8.x/initials/svg?seed=${userData.username}`} alt="avatar" width={128} height={128} className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-cyan-100" />
                     <h2 className="text-2xl font-bold text-gray-800">Welcome, {userData.username}!</h2>
-                    <p className="text-gray-500 mt-2">You're all set to start your meeting.</p>
+                    <p className="text-gray-500 mt-2">You&apos;re all set to start your meeting.</p>
                     <div className="mt-8">
                         <button
                             onClick={() => handleCreateRoom(false)}
