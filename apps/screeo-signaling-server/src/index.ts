@@ -6,43 +6,49 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        // You can update this with your production frontend URL
         origin: ["http://localhost:3000", "https://webrtc-shubh.vercel.app"],
         methods: ["GET", "POST"]
     }
 });
 
+// --- Maps for tracking users and their data ---
 const userIdToSocketIdMap = new Map<string, string>();
 const socketIdToUserIdMap = new Map<string, string>();
+// **NEW**: Map to store usernames associated with user IDs
+const userIdToUsernameMap = new Map<string, string>();
 const rooms: Record<string, Set<string>> = {};
 
 io.on('connection', (socket: Socket) => {
     console.log(`User connected with socket ID: ${socket.id}`);
 
     // --- UPDATED 'join-room' LOGIC ---
-    socket.on('join-room', (roomId: string, userId: string) => {
+    // **FIX**: Now accepts `username` from the client
+    socket.on('join-room', (roomId: string, userId: string, username: string) => {
         // Get a list of users already in the room BEFORE the new user joins.
         const usersInThisRoom = rooms[roomId] ? Array.from(rooms[roomId]) : [];
+        const participantsInRoom = usersInThisRoom.map(id => ({
+            id,
+            username: userIdToUsernameMap.get(id) || 'Guest'
+        }));
 
-        // Associate userId with socket.id
+        // Associate userId with socket.id and username
         userIdToSocketIdMap.set(userId, socket.id);
         socketIdToUserIdMap.set(socket.id, userId);
+        userIdToUsernameMap.set(userId, username); // **NEW**: Store username
         socket.join(roomId);
 
-        // Initialize room if it's new
         if (!rooms[roomId]) {
             rooms[roomId] = new Set();
         }
         rooms[roomId].add(userId);
 
-        console.log(`User ${userId} (Socket: ${socket.id}) joined room ${roomId}`);
+        console.log(`User ${username} (${userId}) joined room ${roomId}`);
 
-        // **NEW:** Send the list of existing users to the new user.
-        // The new user will initiate connections to them.
-        socket.emit('existing-users', usersInThisRoom);
+        // **FIX**: Send the list of existing participants (with usernames) to the new user.
+        socket.emit('existing-users', participantsInRoom);
 
-        // Notify everyone else in the room that a new user has connected.
-        socket.to(roomId).emit('user-connected', userId);
+        // **FIX**: Notify everyone else, sending the new user's complete info.
+        socket.to(roomId).emit('user-connected', { id: userId, username });
     });
 
     // --- WebRTC Signaling Handlers (No changes needed here) ---
@@ -70,13 +76,16 @@ io.on('connection', (socket: Socket) => {
         }
     });
 
-    // Disconnect logic remains the same
+    // --- UPDATED Disconnect logic ---
     const handleDisconnect = () => {
         const disconnectedUserId = socketIdToUserIdMap.get(socket.id);
         if (disconnectedUserId) {
-            console.log(`User ${disconnectedUserId} (Socket: ${socket.id}) disconnected.`);
+            console.log(`User ${disconnectedUserId} disconnected.`);
+            // **NEW**: Clean up username map
+            userIdToUsernameMap.delete(disconnectedUserId);
             userIdToSocketIdMap.delete(disconnectedUserId);
             socketIdToUserIdMap.delete(socket.id);
+
             for (const roomId in rooms) {
                 if (rooms[roomId].has(disconnectedUserId)) {
                     rooms[roomId].delete(disconnectedUserId);

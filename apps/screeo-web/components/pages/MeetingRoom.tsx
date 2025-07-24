@@ -13,7 +13,7 @@ interface Participant {
     isMuted?: boolean;
 }
 
-// --- Icons (Replace with your own icon library like Lucide) ---
+// --- Icons (Same as before) ---
 const MicOnIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" x2="12" y1="19" y2="22" /></svg>;
 const MicOffIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="1" x2="23" y1="1" y2="23" /><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V5a3 3 0 0 0-5.94-.6" /><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" /><line x1="12" x2="12" y1="19" y2="22" /></svg>;
 const ScreenShareIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3" /><path d="m7 15 5-5 5 5" /><path d="M12 10v9" /><path d="M17 8h4v4" /><path d="m21 8-9 9" /></svg>;
@@ -22,6 +22,7 @@ const EndCallIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" hei
 
 // --- Main Room Component ---
 export const RoomComponent = ({ params }: { params: { id: string } }) => {
+    const roomId = params.id;
     const router = useRouter();
     const [participants, setParticipants] = useState<Record<string, Participant>>({});
     const [userId, setUserId] = useState<string | null>(null);
@@ -42,12 +43,15 @@ export const RoomComponent = ({ params }: { params: { id: string } }) => {
                     setUserId(res.data.message.user.id);
                     setUsername(res.data.message.user.username);
                 } else {
-                    // For guest users, generate a temporary unique ID
-                    setUserId(`guest-${Math.random().toString(36).substring(2, 9)}`);
+                    const guestId = `guest-${Math.random().toString(36).substring(2, 9)}`;
+                    setUserId(guestId);
+                    // You might want to get guest's name from query params in the future
+                    setUsername(sessionStorage.getItem('guestName') || `Guest-${guestId.substring(0, 4)}`);
                 }
             }).catch(() => {
-                // Fallback for network errors
-                setUserId(`guest-${Math.random().toString(36).substring(2, 9)}`);
+                const guestId = `guest-${Math.random().toString(36).substring(2, 9)}`;
+                setUserId(guestId);
+                setUsername(sessionStorage.getItem('guestName') || `Guest-${guestId.substring(0, 4)}`);
             });
     }, []);
 
@@ -58,6 +62,18 @@ export const RoomComponent = ({ params }: { params: { id: string } }) => {
             iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
         });
 
+        // **FIX**: Add onnegotiationneeded to automatically handle screen sharing
+        peer.onnegotiationneeded = async () => {
+            console.log("Negotiation needed for peer:", peerId);
+            try {
+                const offer = await peer.createOffer();
+                await peer.setLocalDescription(offer);
+                socketRef.current?.emit('offer', { to: peerId, offer });
+            } catch (err) {
+                console.error("Error creating offer:", err);
+            }
+        };
+
         peer.onicecandidate = (event) => {
             if (event.candidate) {
                 socketRef.current?.emit('ice-candidate', { to: peerId, candidate: event.candidate });
@@ -65,9 +81,8 @@ export const RoomComponent = ({ params }: { params: { id: string } }) => {
         };
 
         peer.ontrack = (event) => {
-            // FIX: Be more explicit when updating participant state to avoid type errors.
             setParticipants(prev => {
-                const existingParticipant = prev[peerId] || { id: peerId, username: `User-${peerId.substring(0, 5)}` };
+                const existingParticipant = prev[peerId] || { id: peerId, username: 'New User' };
                 return {
                     ...prev,
                     [peerId]: { ...existingParticipant, stream: event.streams[0] }
@@ -75,7 +90,6 @@ export const RoomComponent = ({ params }: { params: { id: string } }) => {
             });
         };
 
-        // Add local stream tracks to the new peer connection if the stream exists
         localStreamRef.current?.getTracks().forEach(track => {
             peer.addTrack(track, localStreamRef.current!);
         });
@@ -84,37 +98,31 @@ export const RoomComponent = ({ params }: { params: { id: string } }) => {
         return peer;
     }, []);
 
-    // Effect for Socket.IO connection and event handling
     useEffect(() => {
-        if (!userId) return; // Don't connect until we have a userId
+        if (!userId || !username) return;
 
         const socket = io(process.env.NEXT_PUBLIC_SIGNALING_SERVER_URL || 'http://localhost:3001');
         socketRef.current = socket;
 
-        // Add self to participants list
         setParticipants(prev => ({ ...prev, [userId]: { id: userId, username, stream: localStreamRef.current, isMuted: !isMicOn } }));
 
-        socket.emit('join-room', params.id, userId);
+        // **FIX**: Send username to the server
+        socket.emit('join-room', roomId, userId, username);
 
-        const handleUserConnected = async (newUserId: string) => {
-            console.log(`User connected: ${newUserId}`);
-            // FIX: Add a complete participant object
-            setParticipants(prev => ({ ...prev, [newUserId]: { id: newUserId, username: `User-${newUserId.substring(0, 5)}` } }));
-            const peer = createPeerConnection(newUserId);
-            const offer = await peer.createOffer();
-            await peer.setLocalDescription(offer);
-            socket.emit('offer', { to: newUserId, offer });
+        // **FIX**: Now receives a participant object with id and username
+        const handleUserConnected = (participant: { id: string, username: string }) => {
+            console.log(`User connected: ${participant.username} (${participant.id})`);
+            setParticipants(prev => ({ ...prev, [participant.id]: participant }));
+            createPeerConnection(participant.id);
         };
 
-        const handleExistingUsers = async (existingUsers: string[]) => {
-            console.log("Existing users in room:", existingUsers);
-            for (const existingUserId of existingUsers) {
-                // FIX: Add a complete participant object
-                setParticipants(prev => ({ ...prev, [existingUserId]: { id: existingUserId, username: `User-${existingUserId.substring(0, 5)}` } }));
-                const peer = createPeerConnection(existingUserId);
-                const offer = await peer.createOffer();
-                await peer.setLocalDescription(offer);
-                socket.emit('offer', { to: existingUserId, offer });
+        // **FIX**: Now receives an array of participant objects
+        const handleExistingUsers = (participants: Participant[]) => {
+            console.log("Existing users in room:", participants);
+            for (const participant of participants) {
+                setParticipants(prev => ({ ...prev, [participant.id]: participant }));
+                const peer = createPeerConnection(participant.id);
+                // The onnegotiationneeded event will handle creating the offer
             }
         };
 
@@ -164,87 +172,51 @@ export const RoomComponent = ({ params }: { params: { id: string } }) => {
             Object.values(peersRef.current).forEach(peer => peer.close());
             localStreamRef.current?.getTracks().forEach(track => track.stop());
         };
-    }, [userId, params.id, createPeerConnection, username]);
-
-    // --- Media Control Functions ---
-    // const renegotiatePeers = useCallback(() => {
-    //     Object.keys(peersRef.current).forEach(async (peerId) => {
-    //         try {
-    //             const peer = peersRef.current[peerId];
-    //             // Only renegotiate if the connection is stable
-    //             if (peer.signalingState === "stable") {
-    //                 const offer = await peer.createOffer({ iceRestart: true });
-    //                 await peer.setLocalDescription(offer);
-    //                 socketRef.current?.emit('offer', { to: peerId, offer });
-    //             }
-    //         } catch (error) {
-    //             console.error(`Error renegotiating with peer ${peerId}:`, error);
-    //         }
-    //     });
-    // }, []);
+    }, [userId, roomId, createPeerConnection, username]);
 
     const toggleMedia = useCallback(async (type: 'mic' | 'screen') => {
         const isCurrentlyOn = type === 'mic' ? isMicOn : isSharingScreen;
         const setOn = type === 'mic' ? setIsMicOn : setIsSharingScreen;
 
         const currentStream = localStreamRef.current ?? new MediaStream();
-
-        // Find and stop the specific track if it exists
         const trackKind = type === 'mic' ? 'audio' : 'video';
         const existingTrack = currentStream.getTracks().find(t => t.kind === trackKind);
+
         if (existingTrack) {
             existingTrack.stop();
             currentStream.removeTrack(existingTrack);
-            removeTrackFromPeers(existingTrack);
+            Object.values(peersRef.current).forEach(peer => {
+                const sender = peer.getSenders().find(s => s.track === existingTrack);
+                if (sender) peer.removeTrack(sender);
+            });
         }
 
         if (!isCurrentlyOn) {
             try {
                 const newMediaStream = type === 'mic'
                     ? await navigator.mediaDevices.getUserMedia({ audio: true })
-                    : await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+                    : await navigator.mediaDevices.getDisplayMedia({ video: true, audio: { echoCancellation: true, noiseSuppression: true } });
 
                 const newTrack = newMediaStream.getTracks()[0];
                 currentStream.addTrack(newTrack);
-                addTrackToPeers(newTrack, currentStream);
+                Object.values(peersRef.current).forEach(peer => {
+                    peer.addTrack(newTrack, currentStream);
+                });
 
-                if (type === 'screen') {
-                    newTrack.onended = () => toggleMedia('screen');
-                }
+                if (type === 'screen') newTrack.onended = () => toggleMedia('screen');
+
                 setOn(true);
-            } catch (e) {
-                console.error(`Error starting ${type}:`, e);
-                return;
-            }
+            } catch (e) { console.error(`Error starting ${type}:`, e); return; }
         } else {
             setOn(false);
         }
 
         localStreamRef.current = currentStream;
-        // FIX: Ensure self-view updates correctly
-        setParticipants(prev => ({ ...prev, [userId!]: { ...(prev[userId!] || { id: userId!, username }), stream: currentStream, isMuted: type === 'mic' ? !isMicOn : prev[userId!]?.isMuted } }));
+        setParticipants(prev => ({ ...prev, [userId!]: { ...prev[userId!], stream: currentStream, isMuted: type === 'mic' ? !isCurrentlyOn : prev[userId!]?.isMuted } }));
     }, [isMicOn, isSharingScreen, userId, username]);
 
-    const addTrackToPeers = (track: MediaStreamTrack, stream: MediaStream) => {
-        Object.values(peersRef.current).forEach(peer => {
-            peer.addTrack(track, stream);
-        });
-    }
+    const handleLeaveRoom = () => router.push('/');
 
-    const removeTrackFromPeers = (track: MediaStreamTrack) => {
-        Object.values(peersRef.current).forEach(peer => {
-            const sender = peer.getSenders().find(s => s.track === track);
-            if (sender) {
-                peer.removeTrack(sender);
-            }
-        });
-    };
-
-    const handleLeaveRoom = () => {
-        router.push('/'); // Navigate back to homepage
-    };
-
-    // --- UI Rendering ---
     const participantIds = Object.keys(participants);
     const gridLayout = () => {
         const count = participantIds.length;
@@ -257,14 +229,11 @@ export const RoomComponent = ({ params }: { params: { id: string } }) => {
 
     return (
         <div className="flex flex-col h-screen bg-gray-900 text-white">
-            {/* Main Video Grid - FIX: Added overflow-auto to make this area scrollable */}
             <main className={`flex-1 grid gap-4 p-4 ${gridLayout()} overflow-auto`}>
                 {participantIds.map(pId => (
                     <VideoPlayer key={pId} participant={participants[pId]} isLocal={pId === userId} />
                 ))}
             </main>
-
-            {/* Control Bar - FIX: Added flex-shrink-0 to prevent this from being pushed off-screen */}
             <footer className="flex-shrink-0 bg-gray-800/50 backdrop-blur-sm p-4 flex justify-center items-center gap-4 border-t border-gray-700">
                 <ControlButton onClick={() => toggleMedia('mic')} isOn={isMicOn}>
                     {isMicOn ? <MicOnIcon /> : <MicOffIcon />}
@@ -281,10 +250,8 @@ export const RoomComponent = ({ params }: { params: { id: string } }) => {
 };
 
 // --- Child Components ---
-
 const VideoPlayer = ({ participant, isLocal }: { participant: Participant, isLocal: boolean }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
-
     useEffect(() => {
         if (videoRef.current && participant.stream) {
             videoRef.current.srcObject = participant.stream;
@@ -306,7 +273,6 @@ const ControlButton = ({ children, onClick, isOn = false, isDanger = false }: { 
     const onClasses = 'bg-gray-600 hover:bg-gray-500';
     const offClasses = 'bg-blue-600 hover:bg-blue-500';
     const dangerClasses = 'bg-red-600 hover:bg-red-500';
-
     const classes = `${baseClasses} ${isDanger ? dangerClasses : isOn ? offClasses : onClasses}`;
 
     return <button onClick={onClick} className={classes}>{children}</button>;
