@@ -123,7 +123,7 @@ export const CreateRoomLobbyModal = ({ open, onClose, onSwitchToJoinRoomLobby }:
             }
 
             // Redirect to the new meeting room
-            router.push(`/room/${roomId}`);
+            router.push(`/r/${roomId}`);
 
         } catch (err) {
             const axiosError = err as AxiosError<{ message?: string }>;
@@ -164,7 +164,14 @@ export const CreateRoomLobbyModal = ({ open, onClose, onSwitchToJoinRoomLobby }:
             // --- Authenticated User View ---
             return (
                 <div className="text-center">
-                    <Image src={`https://api.dicebear.com/8.x/initials/svg?seed=${userData.username}`} alt="avatar" width={128} height={128} className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-cyan-100" />
+                    <Image
+                        src={`https://api.dicebear.com/8.x/initials/png?seed=${encodeURIComponent(userData.username)}`}
+                        alt="avatar"
+                        width={128}
+                        height={128}
+                        className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-cyan-100"
+                    />
+                    {/* <Image src={`https://api.dicebear.com/8.x/initials/svg?seed=${userData.username}`} alt="avatar" width={128} height={128} className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-cyan-100" /> */}
                     <h2 className="text-2xl font-bold text-gray-800">Welcome, {userData.username}!</h2>
                     <p className="text-gray-500 mt-2">You&apos;re all set to start your meeting.</p>
                     <div className="mt-8">
