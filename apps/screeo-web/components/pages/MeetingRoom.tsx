@@ -4,6 +4,11 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 import axios from 'axios';
+import { Phone } from '@/icons/Phone';
+import { ScreenShare } from '@/icons/ScreenShare';
+import { MicOn } from '@/icons/MicOn';
+import { MicOff } from '@/icons/MicOff';
+import { ScreenShareOff } from '@/icons/ScreenShareOff';
 
 // --- Types and Interfaces ---
 interface Participant {
@@ -14,11 +19,6 @@ interface Participant {
 }
 
 // --- Icons (Same as before) ---
-const MicOnIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" x2="12" y1="19" y2="22" /></svg>;
-const MicOffIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="1" x2="23" y1="1" y2="23" /><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V5a3 3 0 0 0-5.94-.6" /><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" /><line x1="12" x2="12" y1="19" y2="22" /></svg>;
-const ScreenShareIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3" /><path d="m7 15 5-5 5 5" /><path d="M12 10v9" /><path d="M17 8h4v4" /><path d="m21 8-9 9" /></svg>;
-const ScreenShareOffIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 17h-2l-2-2m-2-2-2-2L1 1l22 22" /><path d="M11 11.25V15h3.75" /><path d="M15 19H5a2 2 0 0 1-2-2V7c0-1 .4-1.9 1-2.6" /><path d="M21 12V5a2 2 0 0 0-2-2h-7" /></svg>;
-const EndCallIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15.64 14.36a9 9 0 0 1-12.23-2.62 4 4 0 0 1-1.2-4.09A9 9 0 0 1 8.86.36a4 4 0 0 1 5.48 1.94 9 9 0 0 1 1.3 9.7z" /><path d="m2.16 16.3 3.32 3.32a4 4 0 0 0 5.66 0l3.32-3.32a4 4 0 0 0 0-5.66l-3.32-3.32a4 4 0 0 0-5.66 0l-3.32 3.32a4 4 0 0 0 0 5.66z" /></svg>;
 
 // --- Main Room Component ---
 export const RoomComponent = ({ params }: { params: { id: string } }) => {
@@ -236,13 +236,13 @@ export const RoomComponent = ({ params }: { params: { id: string } }) => {
             </main>
             <footer className="flex-shrink-0 bg-gray-800/50 backdrop-blur-sm p-4 flex justify-center items-center gap-4 border-t border-gray-700">
                 <ControlButton onClick={() => toggleMedia('mic')} isOn={isMicOn}>
-                    {isMicOn ? <MicOnIcon /> : <MicOffIcon />}
+                    {isMicOn ? <MicOn className='cursor-pointer size-6' /> : <MicOff className='cursor-pointer size-6' />}
                 </ControlButton>
                 <ControlButton onClick={() => toggleMedia('screen')} isOn={isSharingScreen}>
-                    {isSharingScreen ? <ScreenShareOffIcon /> : <ScreenShareIcon />}
+                    {isSharingScreen ? <ScreenShareOff className='size-6 cursor-pointer' /> : <ScreenShare className='size-6 cursor-pointer' />}
                 </ControlButton>
                 <ControlButton onClick={handleLeaveRoom} isDanger>
-                    <EndCallIcon />
+                    <Phone className='size-6 cursor-pointer' />
                 </ControlButton>
             </footer>
         </div>
