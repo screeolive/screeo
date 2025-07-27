@@ -2,11 +2,14 @@
 
 import { Phone } from "@/icons/Phone";
 import { Button } from "../ui/buttons/Button";
+import { Navbar } from "../ui/Navbar";
 
 export const LandingPage = () => {
     return (
-        <div className="flex justify-center items-center bg-[#08090a] text-[#eaf2ef] h-screen">
-            <Button text="LogIn" colorVariant="yellow" hoverVariant="yellow_1" sizeVariant="large" endIcon={<Phone className="size-5"/>}/>
+        <div className="bg-[#08090a] text-[#eaf2ef] h-screen overflow-hidden">
+            <div className="mt-10">
+                <Navbar/>           
+            </div>
         </div>
     )
 }

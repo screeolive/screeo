@@ -3,11 +3,13 @@ import { ReactElement, MouseEvent } from "react";
 
 const colorVariants = {
     purple: "bg-[#735cdd] text-white font-bold",
-    yellow: "bg-[#efcb68] text-black font-bold"
+    yellow: "bg-[#efcb68] text-black font-bold",
+    white: "bg-[#eaf2ef] text-black font-bold"
 }
 
 const sizeVariants = {
-    small: "p-2",
+    small: "p-1",
+    medium: "p-2 text-lg",
     large: "p-2 text-xl"
 }
 
@@ -16,7 +18,10 @@ const hoverVariants = {
     purple_1: "hover:text-[#735cdd] hover:bg-black border border-3 border-[#735cdd]",
 
     // yellow hover effects variants:
-    yellow_1: "hover:text-[#efcb68] hover:bg-[#000411] border border-3 border-[#efcb68]"
+    yellow_1: "hover:text-[#efcb68] hover:bg-[#000411] border border-3 border-[#efcb68]",
+
+    // white hover effects variants:
+    white_1: "hover:text-white hover:bg-black border border-3 border-white"
 }
 
 const defaultButtonStyles = "flex items-center rounded-xl cursor-pointer transition-all duration-300";
