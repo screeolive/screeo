@@ -16,12 +16,15 @@ const sizeVariants = {
 const hoverVariants = {
     // purple hover effects variants:
     purple_1: "hover:text-[#735cdd] hover:bg-black border border-3 border-[#735cdd]",
-
+    purple_2: "hover:scale-105",
+    
     // yellow hover effects variants:
     yellow_1: "hover:text-[#efcb68] hover:bg-[#000411] border border-3 border-[#efcb68]",
+    yellow_2: "hover:scale-105",
 
     // white hover effects variants:
-    white_1: "hover:text-white hover:bg-black border border-3 border-white"
+    white_1: "hover:text-white hover:bg-black border border-3 border-white",
+    white_2: "hover:scale-105"
 }
 
 const defaultButtonStyles = "flex items-center rounded-xl cursor-pointer transition-all duration-300";

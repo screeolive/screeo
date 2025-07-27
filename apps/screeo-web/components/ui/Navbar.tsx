@@ -1,6 +1,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "./buttons/Button"
+import { Phone } from "@/icons/Phone"
 
 export const Navbar = () => {
     return (
@@ -18,7 +19,7 @@ export const Navbar = () => {
             </div>
 
             <div>
-                <Button text="Sign up for free" colorVariant="white" sizeVariant="medium" hoverVariant="white_1"/>
+                <Button text="Sign up for free" colorVariant="white" sizeVariant="medium" hoverVariant="white_1" endIcon={<Phone className="size-5"/>}/>
             </div>
         </div>
     )
